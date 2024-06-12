@@ -576,7 +576,7 @@ def test_consumer_specific_settings_from_profile():
     assert "I'm hello and my build type is Debug" in client.out
 
 
-def test_consumer_several_local_profiles():
+def test_consumer_invalid_profile_multiple_groups():
     """
     Issue related: https://github.com/conan-io/conan/issues/16448
     """
@@ -584,11 +584,10 @@ def test_consumer_several_local_profiles():
     conanfile = GenConanfile(name="hello", version="1.0").with_settings("os", "arch",
                                                                         "build_type", "compiler")
     prof1 = textwrap.dedent("""\
-    include(base-linux)
-
     [settings]
-    # arch=x86_64
-    # os=Linux
+    arch=x86_64
+    os=Linux
+    build_type=Release
     compiler=clang
     compiler.libcxx=libstdc++11
     compiler.version=18
@@ -596,25 +595,15 @@ def test_consumer_several_local_profiles():
 
     [conf]
     tools.build:compiler_executables={'c': '/usr/bin/clang-18', 'cpp': '/usr/bin/clang++-18'}
-    """)
-    prof2 = textwrap.dedent("""\
-    [settings]
-    arch=x86_64
-    os=Linux
-    """)
-    prof3 = textwrap.dedent("""\
-    include(base-clang-18)
 
     [settings]
-    build_type=Release
+    package/*:option=Whatever
     """)
     client.save({
         "conanfile.py": conanfile,
-        "myprofs/base-clang-18": prof1,
-        "myprofs/base-linux": prof2,
-        "myprofs/release-clang-18": prof3,
+        "myprofs/myprofile": prof1
     })
-    client.run("build . --profile:host myprofs/release-clang-18 -g CMakeToolchain")
+    client.run("build . --profile:host myprofs/myprofile -g CMakeToolchain")
     # No issues here, it gets the build-step which is empty
     assert "Invalid: 'settings.os' value not defined" not in client.out
     assert "Invalid: 'settings.arch' value not defined" not in client.out
